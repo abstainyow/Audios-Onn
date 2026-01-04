@@ -2,25 +2,32 @@
 import { GoogleGenAI, Type } from "@google/genai";
 import { Release, MarketingContent } from "../types";
 
-export const generateMarketingContent = async (release: Release): Promise<MarketingContent> => {
-  const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+
+export const getMarketInsights = async (artistGenre: string) => {
+  const response = await ai.models.generateContent({
+    model: "gemini-3-flash-preview",
+    contents: `Quais são as 3 maiores oportunidades e tendências para artistas independentes de ${artistGenre} no ano de 2026, especificamente focando em mercados emergentes como Angola e Brasil?`,
+    config: {
+      tools: [{ googleSearch: {} }],
+    },
+  });
   
+  return {
+    text: response.text,
+    sources: response.candidates?.[0]?.groundingMetadata?.groundingChunks || []
+  };
+};
+
+export const generateMarketingContent = async (release: Release): Promise<MarketingContent> => {
   const prompt = `
-    Você é um especialista em marketing musical de elite da Audios On (inspirado no nível de serviço da ONErpm). 
-    Gere conteúdo promocional atraente para o seguinte lançamento:
+    Você é um especialista em marketing musical de elite da Audios On. 
+    Gere conteúdo promocional atraente para o seguinte lançamento de 2026:
     Título: ${release.title}
     Artista: ${release.artist}
     Gênero: ${release.genre}
-    Links Atuais: ${JSON.stringify(release.links)}
     
-    O conteúdo deve focar em conversão de fãs e proteção de direitos autorais.
-    
-    Diretrizes específicas:
-    - Facebook: Post narrativo para fãs hardcore.
-    - Instagram: Legenda com CTA agressivo para a bio. Inclua 10 hashtags estratégicas.
-    - YouTube: Descrição SEO otimizada com créditos e capítulos.
-    - TikTok: Roteiro curto de 15s para vídeo de bastidores/curiosidade.
-    - SmartLink Slogan: Uma frase de 5 palavras para o cabeçalho do link de pré-save/lançamento.
+    O conteúdo deve ser futurista e focado em 2026.
   `;
 
   const response = await ai.models.generateContent({
@@ -42,10 +49,5 @@ export const generateMarketingContent = async (release: Release): Promise<Market
     },
   });
 
-  try {
-    return JSON.parse(response.text || "{}") as MarketingContent;
-  } catch (error) {
-    console.error("Error parsing Gemini response", error);
-    throw new Error("Falha ao gerar conteúdo de marketing");
-  }
+  return JSON.parse(response.text || "{}") as MarketingContent;
 };
